@@ -31,7 +31,7 @@ psthbins = round(psthbinwidth*Fs);  % number of psth bins per psth bin
 psthtime = timeout(1:psthbins:end); % time vector for psth
 pr = sum(reshape(psth,psthbins,length(psth)/psthbins))/nrep; % pr of spike in each bin
 Psth = pr/psthbinwidth; % psth in units of spikes/s
- 
+disp(size(Psth))
 figure
 subplot(4,1,1)
 plot(timeout,[pin zeros(1,length(timeout)-length(pin))])
