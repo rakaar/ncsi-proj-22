@@ -1,3 +1,4 @@
+%%  ================== q1=====================================
 % model fiber parameters
 clear all; 
 CF    = 10.0e3; % CF in Hz;   
@@ -26,8 +27,9 @@ intensities = -10:10:80;
 n_iters = 5;
 rate_tensor_500hz = zeros(n_iters, length(intensities), length(freqs));
 CF = 500;
-% for 500Hz 
+% ----------- for 500Hz ------
 for iter=1:n_iters
+    fprintf("-----iter num %d \n", iter);
     for i=1:length(intensities)
         for f=1:length(freqs)
                 pin = sqrt(2)*20e-6*10^(intensities(i)/20)*sin(2*pi*freqs(f)*t); % unramped stimulus
@@ -58,42 +60,120 @@ end
 figure
     hold on
         for i=1:length(intensities)
-            
+            y = rate_tensor_500hz_avg_iters(i,:);
+            x=log10(freqs);
+            plot(x, y);
         end
     hold off
     title('500 hz at 10 diff intensities')
 grid
 
 
-return
-pin = sqrt(2)*20e-6*10^(stimdb/20)*sin(2*pi*F0*t); % unramped stimulus
-pin(1:irpts)=pin(1:irpts).*(0:(irpts-1))/irpts; 
-pin((mxpts-irpts):mxpts)=pin((mxpts-irpts):mxpts).*(irpts:-1:0)/irpts;
+% -------- for 4 khz ----------
+rate_tensor_4khz = zeros(n_iters, length(intensities), length(freqs));
+CF = 4000;
+for iter=1:n_iters
+    fprintf("-----iter num %d \n", iter);
+    for i=1:length(intensities)
+        for f=1:length(freqs)
+                pin = sqrt(2)*20e-6*10^(intensities(i)/20)*sin(2*pi*freqs(f)*t); % unramped stimulus
+                pin(1:irpts)=pin(1:irpts).*(0:(irpts-1))/irpts; 
+                pin((mxpts-irpts):mxpts)=pin((mxpts-irpts):mxpts).*(irpts:-1:0)/irpts;
+                
+                vihc = catmodel_IHC(pin,CF,nrep,1/Fs,T*2,cohc,cihc); 
+                [synout,psth] = catmodel_Synapse(vihc,CF,nrep,1/Fs,fiberType,implnt); 
+                
+                timeout = (1:length(psth))*1/Fs;
+                psthbins = round(psthbinwidth*Fs);  % number of psth bins per psth bin
+                psthtime = timeout(1:psthbins:end); % time vector for psth
+                pr = sum(reshape(psth,psthbins,length(psth)/psthbins))/nrep; % pr of spike in each bin
+                Psth = pr/psthbinwidth; % psth in units of spikes/s
+                avg_Psth = sum(Psth)/length(Psth);
+                rate_tensor_4khz(iter, i, f) = avg_Psth;
+        end
+    end
+end
 
-vihc = catmodel_IHC(pin,CF,nrep,1/Fs,T*2,cohc,cihc); 
-[synout,psth] = catmodel_Synapse(vihc,CF,nrep,1/Fs,fiberType,implnt); 
+rate_tensor_4khz_avg_iters = zeros(length(intensities), length(freqs));
+for i=1:length(intensities)
+    for f=1:length(freqs)
+        rate_tensor_4khz_avg_iters(i,f) = sum(rate_tensor_4khz(:,i,f))/n_iters;
+    end
+end
 
-timeout = (1:length(psth))*1/Fs;
-psthbins = round(psthbinwidth*Fs);  % number of psth bins per psth bin
-psthtime = timeout(1:psthbins:end); % time vector for psth
-pr = sum(reshape(psth,psthbins,length(psth)/psthbins))/nrep; % pr of spike in each bin
-Psth = pr/psthbinwidth; % psth in units of spikes/s
-disp(size(Psth))
 figure
-subplot(4,1,1)
-plot(timeout,[pin zeros(1,length(timeout)-length(pin))])
-title('Input Stimulus')
+    hold on
+        for i=1:length(intensities)
+            y = rate_tensor_4khz_avg_iters(i,:);
+            x=log10(freqs);
+            plot(x, y);
+        end
+    hold off
+    title('4k hz at 10 diff intensities')
+grid
 
-subplot(4,1,2)
-plot(timeout,vihc(1:length(timeout)))
-title('IHC output')
+% ## rate vs intensity 
+% --- for 500 hz -----
+intensites_vs_rate_500hz = zeros(n_iters, length(intensities));
+F0 = 500;
+CF = 500;
+for iter=1:n_iters
+   for i=1:length(intensities)
+                stimdb = intensities(i);
+                
+                pin = sqrt(2)*20e-6*10^(stimdb/20)*sin(2*pi*F0*t); % unramped stimulus
+                pin(1:irpts)=pin(1:irpts).*(0:(irpts-1))/irpts; 
+                pin((mxpts-irpts):mxpts)=pin((mxpts-irpts):mxpts).*(irpts:-1:0)/irpts;
+                
+                vihc = catmodel_IHC(pin,CF,nrep,1/Fs,T*2,cohc,cihc); 
+                [synout,psth] = catmodel_Synapse(vihc,CF,nrep,1/Fs,fiberType,implnt); 
+                
+                timeout = (1:length(psth))*1/Fs;
+                psthbins = round(psthbinwidth*Fs);  % number of psth bins per psth bin
+                psthtime = timeout(1:psthbins:end); % time vector for psth
+                pr = sum(reshape(psth,psthbins,length(psth)/psthbins))/nrep; % pr of spike in each bin
+                Psth = pr/psthbinwidth; % psth in units of spikes/s
+                avg_Psth = sum(Psth)/length(Psth);
+                intensites_vs_rate_500hz(iter, i) = avg_Psth;
+   end
+end
 
-subplot(4,1,3)
-plot(timeout,synout); 
-title('Synapse Output')
-xlabel('Time (s)')
+intensites_vs_rate_500hz_avg = zeros(1, length(intensities));
+for i=1:length(intensities)
+    intensites_vs_rate_500hz_avg(1,i) = sum(intensites_vs_rate_500hz(:,i))/n_iters;
+end
 
-subplot(4,1,4)
-plot(psthtime,Psth)
-title('psth')
-xlabel('Time (s)')
+% for 4 khz 
+intensites_vs_rate_4khz = zeros(n_iters, length(intensities));
+F0 = 4000;
+CF = 4000;
+for iter=1:n_iters
+   for i=1:length(intensities)
+                stimdb = intensities(i);
+                
+                pin = sqrt(2)*20e-6*10^(stimdb/20)*sin(2*pi*F0*t); % unramped stimulus
+                pin(1:irpts)=pin(1:irpts).*(0:(irpts-1))/irpts; 
+                pin((mxpts-irpts):mxpts)=pin((mxpts-irpts):mxpts).*(irpts:-1:0)/irpts;
+                
+                vihc = catmodel_IHC(pin,CF,nrep,1/Fs,T*2,cohc,cihc); 
+                [synout,psth] = catmodel_Synapse(vihc,CF,nrep,1/Fs,fiberType,implnt); 
+                
+                timeout = (1:length(psth))*1/Fs;
+                psthbins = round(psthbinwidth*Fs);  % number of psth bins per psth bin
+                psthtime = timeout(1:psthbins:end); % time vector for psth
+                pr = sum(reshape(psth,psthbins,length(psth)/psthbins))/nrep; % pr of spike in each bin
+                Psth = pr/psthbinwidth; % psth in units of spikes/s
+                avg_Psth = sum(Psth)/length(Psth);
+                intensites_vs_rate_500hz(iter, i) = avg_Psth;
+   end
+end
+
+intensites_vs_rate_500hz_avg = zeros(1, length(intensities));
+for i=1:length(intensities)
+    intensites_vs_rate_500hz_avg(1,i) = sum(intensites_vs_rate_500hz(:,i))/n_iters;
+end
+
+figure
+    plot(intensites_vs_rate_500hz_avg);
+    title('rate vs intensity for 500 hz BF')
+grid
