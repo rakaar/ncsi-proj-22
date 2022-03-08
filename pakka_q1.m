@@ -183,14 +183,23 @@ figure
 grid
 
 %% ================== q2 ===================
+% what is use of RMS??? - mulitply later to feed into ANFs
+intensities = -20:10:80;
+
 [fivewo, fs] = audioread('fivewo.wav');   %reading entire wav file
-ah = fivewo(98250:113500);    % 'ah' sound
+ah = fivewo(98250:113499);    % 'ah' sound
 sound(ah, fs);
 rms_ah = rms(ah);
 I_0 = 20*10^(-6);
 db_SPL = 20*log10(rms_ah/I_0);
-% what is use of RMS??? - mulitply later to feed into ANFs
-intensities = -20:10:80;
+appropirate_factor = zeros(1,length(intensities));
+
+for i=1:length(intensities)
+   appropirate_factor(1,i) = (10^(intensities(i)/20)*(20 * (10^-6)))/rms_ah;
+end
+
+
+
 ah = ah';
 
 CF    = 500; % CF in Hz;   
@@ -201,7 +210,8 @@ implnt = 0;    % "0" for approximate or "1" for actual implementation of the pow
 % stimulus parameters
 F0 = CF;     % stimulus frequency in Hz
 Fs = 100e3;  % sampling rate in Hz (must be 100, 200 or 500 kHz)
-T  = length(ah);  % stimulus duration in seconds
+T  = length(ah)/Fs;  % stimulus duration in seconds
+% T = 50;
 rt = 5e-3;   % rise/fall time in seconds
 % PSTH parameters
 nrep = 1;               % number of stimulus repetitions (e.g., 50);
@@ -211,26 +221,38 @@ t = 0:1/Fs:T-1/Fs; % time vector
 mxpts = length(t);
 irpts = rt*Fs;
 
-rate_vs_intensity_500 = zeros(1, length(intensities));
+n_iters = 50;
+rate_vs_intensity_500 = zeros(n_iters, length(intensities));
+
+for iter=1:n_iters
+        for i=1:length(intensities)
+            pin = ah*appropirate_factor(1,i); % unramped stimulus - ah
+            pin(1:irpts)=pin(1:irpts).*(0:(irpts-1))/irpts; 
+            pin((mxpts-irpts):mxpts)=pin((mxpts-irpts):mxpts).*(irpts:-1:0)/irpts;
+            
+            vihc = catmodel_IHC(pin,CF,nrep,1/Fs,T*2,cohc,cihc); 
+            [synout,psth] = catmodel_Synapse(vihc,CF,nrep,1/Fs,fiberType,implnt); 
+            
+            timeout = (1:length(psth))*1/Fs;
+            psthbins = round(psthbinwidth*Fs);  % number of psth bins per psth bin
+            psthtime = timeout(1:psthbins:end); % time vector for psth
+            pr = sum(reshape(psth,psthbins,length(psth)/psthbins))/nrep; % pr of spike in each bin
+            Psth = pr/psthbinwidth; % psth in units of spikes/s
+            Psth_avg = sum(Psth)/length(Psth);
+            rate_vs_intensity_500(iter, i) = Psth_avg;
+    end
+end
+
+rate_vs_intensity_500_avg = zeros(1, length(intensities));
 for i=1:length(intensities)
-    stimdb = intensities(i);
-    pin = ah; % unramped stimulus - ah
-    pin(1:irpts)=pin(1:irpts).*(0:(irpts-1))/irpts; 
-    pin((mxpts-irpts):mxpts)=pin((mxpts-irpts):mxpts).*(irpts:-1:0)/irpts;
-    
-    vihc = catmodel_IHC(pin,CF,nrep,1/Fs,T*2,cohc,cihc); 
-    [synout,psth] = catmodel_Synapse(vihc,CF,nrep,1/Fs,fiberType,implnt); 
-    
-    timeout = (1:length(psth))*1/Fs;
-    psthbins = round(psthbinwidth*Fs);  % number of psth bins per psth bin
-    psthtime = timeout(1:psthbins:end); % time vector for psth
-    pr = sum(reshape(psth,psthbins,length(psth)/psthbins))/nrep; % pr of spike in each bin
-    Psth = pr/psthbinwidth; % psth in units of spikes/s
-    Psth_avg = sum(Psth)/length(Psth);
-    rate_vs_intensity_500(1, i) = Psth_avg;
+    rate_vs_intensity_500_avg(1, i) = sum(rate_vs_intensity_500(:,i))/n_iters;
 end
 
 figure
-    plot(intensities,rate_vs_intensity_500)
+    plot(intensities,rate_vs_intensity_500_avg)
     title('rate vs intensity for ah sound -500 hz BF')
 grid
+
+% intensties based on curve
+i1 = 0; i2 = 40; i3 = 70;
+
