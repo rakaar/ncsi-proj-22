@@ -225,10 +225,7 @@ n_iters = 50;
 rate_vs_intensity_500 = zeros(n_iters, length(intensities));
 
 for iter=1:n_iters
-        fprintf("++++++++++iter num %d n",iter);
         for i=1:length(intensities)
-            disp(i)
-            stimdb = intensities(i);
             pin = ah*appropirate_factor(1,i); % unramped stimulus - ah
             pin(1:irpts)=pin(1:irpts).*(0:(irpts-1))/irpts; 
             pin((mxpts-irpts):mxpts)=pin((mxpts-irpts):mxpts).*(irpts:-1:0)/irpts;
@@ -255,3 +252,60 @@ figure
     plot(intensities,rate_vs_intensity_500_avg)
     title('rate vs intensity for ah sound -500 hz BF')
 grid
+
+%% q2-a intensties based on curve
+i1 = 0; i2 = 40; i3 = 70;
+bank_of_freqs = 125*2.^[0:1/8:6];
+num_of_freqs_in_bank = length(bank_of_freqs);
+levels_3 = [i1, i2, i3];
+
+[fivewo, fs] = audioread('fivewo.wav');   %reading entire wav file
+fivewo = fivewo';
+rms5 = rms(fivewo);
+I_0 = 20*10^(-6);
+db_SPL = 20*log10(rms5/I_0);
+appropirate_factor = zeros(1,3);
+
+for i=1:3
+   appropirate_factor(1,i) = (10^(levels_3(i)/20)*(20 * (10^-6)))/rms5;
+end
+
+
+
+cohc  = 1.0;   % normal ohc function
+cihc  = 1.0;   % normal ihc function
+fiberType = 3; % spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
+implnt = 0;    % "0" for approximate or "1" for actual implementation of the power-law functions in the Synapse
+% stimulus parameters
+Fs = 100e3;  % sampling rate in Hz (must be 100, 200 or 500 kHz)
+T  = length(fivewo)/Fs;  % stimulus duration in seconds
+% T = 50;
+rt = 5e-3;   % rise/fall time in seconds
+% PSTH parameters
+nrep = 1;               % number of stimulus repetitions (e.g., 50);
+psthbinwidth = 0.5e-3; % binwidth in seconds;
+
+t = 0:1/Fs:T-1/Fs; % time vector
+mxpts = length(t);
+irpts = rt*Fs;
+
+
+
+
+spike_trains = zeros(3, num_of_freqs_in_bank, 312500);
+
+for i=1:length(levels_3)
+    disp(i)
+    for b=1:num_of_freqs_in_bank
+            fprinf("\n i=%d, b %d\n")
+            pin = fivewo*appropirate_factor(1,i); % unramped stimulus - ah
+            CF = bank_of_freqs(b);
+            vihc = catmodel_IHC(pin,CF,nrep,1/Fs,T*2,cohc,cihc); 
+            [synout,psth] = catmodel_Synapse(vihc,CF,nrep,1/Fs,fiberType,implnt);
+            psth_reshaped = reshape(psth, 1,1,312500);
+
+            spike_trains(i,b,:) = psth_reshaped;
+    end
+ 
+end
+%%
