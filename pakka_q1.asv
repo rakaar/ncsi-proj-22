@@ -254,7 +254,7 @@ figure
 grid
 
 %% q2-a intensties based on curve
-i1 = 0; i2 = 40; i3 = 70;
+i1 = 0; i2 = 40; i3 = 76; % 76 is also intensity of aah sound, it will be easier to compare 
 bank_of_freqs = 125*2.^[0:1/8:6];
 num_of_freqs_in_bank = length(bank_of_freqs);
 levels_3 = [i1, i2, i3];
@@ -297,7 +297,7 @@ spike_trains = zeros(3, num_of_freqs_in_bank, 312500);
 for i=1:length(levels_3)
     disp(i)
     for b=1:num_of_freqs_in_bank
-            fprinf("\n i=%d, b %d\n")
+            fprintf("\n i=%d, b = %d\n",i,b);
             pin = fivewo*appropirate_factor(1,i); % unramped stimulus - ah
             CF = bank_of_freqs(b);
             vihc = catmodel_IHC(pin,CF,nrep,1/Fs,T*2,cohc,cihc); 
@@ -308,4 +308,41 @@ for i=1:length(levels_3)
     end
  
 end
-%%
+%% -------- q2 c----
+[fivewo, fs] = audioread('fivewo.wav');   %reading entire wav file
+Fs = 100e3;
+freqs = 125*2.^[0:1/8:6] ;
+fivewo = fivewo';
+figure
+    spectrogram(fivewo, hann(25.6e-3*Fs), 12.8e-3*Fs, 1:8000, Fs, 'yaxis');
+    title('spectrogram')
+grid
+
+s3 = spike_trains(3,:, :);
+s3 = squeeze(s3);
+
+% window_sizes = [4,8,16,32,64,128];
+window_sizes = [4];
+half_window_sizes = window_sizes/2;
+for w=1:length(window_sizes)
+    interval = 1:half_window_sizes(w):312500-window_sizes(w)+1;
+    response_rates = zeros(49, length(interval));
+    for f=1:length(freqs)
+            for i=length(interval)
+                response_rates(f, i) = sum(s3(f, interval(i):interval(i)+window_sizes(w)-1));
+                if response_rates(f, i) ~= 0
+                
+                end
+            end
+    end
+    figure(60)
+        subplot(2,3,w)
+        surf(interval, freqs, response_rates);
+        view(2);
+    grid on
+    colorbar
+end
+
+
+
+
