@@ -295,7 +295,6 @@ irpts = rt*Fs;
 spike_trains = zeros(3, num_of_freqs_in_bank, 312500);
 
 for i=1:length(levels_3)
-    disp(i)
     for b=1:num_of_freqs_in_bank
             fprintf("\n i=%d, b = %d\n",i,b);
             pin = fivewo*appropirate_factor(1,i); % unramped stimulus - ah
@@ -321,28 +320,30 @@ grid
 s3 = spike_trains(3,:, :);
 s3 = squeeze(s3);
 
-% window_sizes = [4,8,16,32,64,128];
-window_sizes = [4];
-half_window_sizes = window_sizes/2;
+window_sizes = [4,8,16,32,64,128];
+% window_sizes = [4];
+half_window_sizes = window_sizes./2;
+
 for w=1:length(window_sizes)
     interval = 1:half_window_sizes(w):312500-window_sizes(w)+1;
     response_rates = zeros(49, length(interval));
     for f=1:length(freqs)
-            for i=length(interval)
+            for i=1:length(interval)
                 response_rates(f, i) = sum(s3(f, interval(i):interval(i)+window_sizes(w)-1));
-                if response_rates(f, i) ~= 0
-                
-                end
+
             end
     end
+    
     figure(60)
         subplot(2,3,w)
-        surf(interval, freqs, response_rates);
-        view(2);
-    grid on
-    colorbar
+         [ tim, frq ] = meshgrid( interval, freqs);
+         surf(tim, frq, response_rates          ,'edgecolor','none');
+        set(gca,'xtick',[]);set(gca,'ytick',[]);xlabel([]);ylabel([]);colorbar('off');
+        xlim([0,1.5e5]);
+        
+         view(2);
+
+
 end
-
-
 
 

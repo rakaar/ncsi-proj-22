@@ -336,7 +336,11 @@ for w=1:length(window_sizes)
     
     figure(60)
         subplot(2,3,w)
-         surf(interval,freqs, response_rates);
+         [ tim, frq ] = meshgrid( interval, freqs);
+         surf(tim, frq, response_rates,'edgecolor','none');
+        colorbar;
+        xlim([0,1.5e5]);
+        view(2);
 
 
 end
