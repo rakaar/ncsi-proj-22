@@ -337,13 +337,42 @@ for w=1:length(window_sizes)
     figure(60)
         subplot(2,3,w)
          [ tim, frq ] = meshgrid( interval, freqs);
-         surf(tim, frq, response_rates          ,'edgecolor','none');
-        set(gca,'xtick',[]);set(gca,'ytick',[]);xlabel([]);ylabel([]);colorbar('off');
+         surf(tim, frq, response_rates,'edgecolor','none');
+        colorbar;
         xlim([0,1.5e5]);
-        
-         view(2);
+        view(2);
 
 
 end
 
+%% ------------ q3 -------------
+[fivewo, fs] = audioread('fivewo.wav');   %reading entire wav file
+Fs = 100e3;
+bfs = [1, 5, 9,  13, 17, 21,   25, 29, 33,  37, 41];
+cmap1 = hsv(11);
+window_size = 12.8e-3*Fs;
+half_window = floor(window_size/2);
+interval = window_size/2:half_window:length(fivewo)-window_size/2;
+max_pts = zeros(1, length(interval));
+spike_train1 = spike_trains(3,:,:);
+spike_train1 = squeeze(spike_train1);
+figure
+    hold on;
+    
+for f=1:length(bfs)
+    for i=1:length(interval)
+        rate1 = spike_train1(bfs(f), (interval(i)-half_window+1) : (interval(i)+half_window));
+        % subtracting mean
+        mean_rate = mean(rate1);
+        fft_rate = abs(fft(rate1 - mean_rate));
+        [max_val, max_index] = max(squeeze(fft_rate(1:length(fft_rate)/2)));
+        max_pts(i) = max_index*Fs/length(fft_rate);
+    end
+
+    scatter3(interval/Fs,max_pts/1000,zeros(1,length(interval))-50,[],cmap1(f,:),'filled', 'MarkerEdgeColor', 'k');
+    ylim([0 3]);
+end
+
+    hold off;
+grid
 

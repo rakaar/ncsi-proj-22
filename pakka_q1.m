@@ -321,23 +321,22 @@ s3 = spike_trains(3,:, :);
 s3 = squeeze(s3);
 
 window_sizes = [4,8,16,32,64,128];
-% window_sizes = [4];
-half_window_sizes = window_sizes./2;
+window_sizes = window_sizes*1e-3*Fs;
+half_window_sizes = floor(window_sizes)./2;
 
 for w=1:length(window_sizes)
-    interval = 1:half_window_sizes(w):312500-window_sizes(w)+1;
+    interval = window_sizes(w)/2:half_window_sizes(w):length(fivewo)-window_sizes(w)/2;
     response_rates = zeros(49, length(interval));
     for f=1:length(freqs)
             for i=1:length(interval)
-                response_rates(f, i) = sum(s3(f, interval(i):interval(i)+window_sizes(w)-1));
-
+                response_rates(f, i) = sum(s3(f, interval(i)-half_window_sizes(w)+1:interval(i)+half_window_sizes(w)))/window_sizes(w);
             end
     end
     
     figure(60)
         subplot(2,3,w)
-         [ tim, frq ] = meshgrid( interval, freqs);
-         surf(tim, frq, response_rates,'edgecolor','none');
+         [ t, f ] = meshgrid( interval, freqs);
+         surf(t, f, response_rates,'edgecolor','none');
         colorbar;
         xlim([0,1.5e5]);
         view(2);
@@ -345,4 +344,35 @@ for w=1:length(window_sizes)
 
 end
 
+%% ------------ q3 -------------
+[fivewo, fs] = audioread('fivewo.wav');   %reading entire wav file
+Fs = 100e3;
+bfs = [1, 5, 9,  13, 17, 21,   25, 29, 33,  37, 41];
+cmap1 = hsv(11);
+window_size = 12.8e-3*Fs;
+half_window = floor(window_size/2);
+interval = window_size/2:half_window:length(fivewo)-window_size/2;
+max_pts = zeros(1, length(interval));
+spike_train1 = spike_trains(3,:,:);
+spike_train1 = squeeze(spike_train1);
+figure(30)
+    spectrogram(fivewo, hann(12.8e-3*Fs), 6.4e-3*Fs, 1:8000, Fs, 'yaxis');
+    view(3);
+    hold on;
+for f=1:length(bfs)
+    for i=1:length(interval)
+        rate1 = spike_train1(bfs(f), (interval(i)-half_window+1) : (interval(i)+half_window));
+        % subtracting mean
+        mean_rate = mean(rate1);
+        fft_rate = abs(fft(rate1 - mean_rate));
+        [max_val, max_index] = max(squeeze(fft_rate(1:length(fft_rate)/2)));
+        max_pts(i) = max_index*Fs/length(fft_rate);
+    end
+
+    scatter3(interval/Fs,max_pts/1000,zeros(1,length(interval))-50,[],cmap1(f,:),'filled', 'MarkerEdgeColor', 'k');
+    ylim([0 3]);
+end
+view(2)
+
+grid
 
